@@ -35,35 +35,110 @@ impl Cpu {
     fn execute(&mut self, instruction: Instruction) {
         match instruction {
             Instruction::ClearDisplay => {unimplemented!()}
-            Instruction::Return => {unimplemented!()}
-            Instruction::Jump(addr) => {self.pc = addr;},
-            Instruction::Call(addr) => {unimplemented!()}
-            Instruction::SkipIfEqualsByte(x, num) => {unimplemented!()}
-            Instruction::SkipIfNotEqualsByte(x, num) => {unimplemented!()}
-            Instruction::SkipIfEqualsRegister(x, y) => {unimplemented!()}
-            Instruction::LoadByte(x, num) => {unimplemented!()}
-            Instruction::AddByte(x, num) => {unimplemented!()}
-            Instruction::Move(x, num) => {unimplemented!()}
-            Instruction::Or(x, y) => {unimplemented!()}
-            Instruction::And(x, y) => {unimplemented!()}
-            Instruction::Xor(x, y) => {unimplemented!()}
-            Instruction::Add(x, y) => {unimplemented!()}
-            Instruction::Subtract(x, y) => {unimplemented!()}
-            Instruction::ShiftRight(x, y) => {unimplemented!()}
-            Instruction::SubtractReverse(x, y) => {unimplemented!()}
-            Instruction::ShifLeft(x, y) => {unimplemented!()}
-            Instruction::SkipIfNotEqualsRegister(x, y) => {unimplemented!()}
-            Instruction::LoadIndex(addr) => {unimplemented!()}
-            Instruction::JumpWithOffset(addr) => {unimplemented!()}
+            Instruction::Return => {
+                self.sp -= 1;
+                self.pc = self.stack[self.sp as usize];
+            }
+            Instruction::Jump(addr) => {
+                self.pc = addr;
+            },
+            Instruction::Call(addr) => {
+                self.stack[self.sp as usize] = self.pc;
+                self.sp += 1;
+                self.pc = addr;
+            }
+            Instruction::SkipIfEqualsByte(x, num) => {
+                self.pc += if self.registers[x as usize] == num {2} else {1};
+            }
+            Instruction::SkipIfNotEqualsByte(x, num) => {
+                self.pc += if self.registers[x as usize] != num {2} else {1};
+            }
+            Instruction::SkipIfEqualsRegister(x, y) => {
+                self.pc += if self.registers[x as usize] == self.registers[y as usize] {2} else {1};
+            }
+            Instruction::LoadByte(x, num) => {
+                self.registers[x as usize] = num;
+                self.pc += 1;
+            }
+            Instruction::AddByte(x, num) => {
+                self.registers[x as usize] += num;
+                self.pc += 1;
+            }
+            Instruction::Move(x, y) => {
+                self.registers[x as usize] = self.registers[y as usize];
+                self.pc += 1;
+            }
+            Instruction::Or(x, y) => {
+                self.registers[x as usize] |= self.registers[y as usize];
+                self.pc += 1;
+            }
+            Instruction::And(x, y) => {
+                self.registers[x as usize] &= self.registers[y as usize];
+                self.pc += 1;
+            }
+            Instruction::Xor(x, y) => {
+                self.registers[x as usize] ^= self.registers[y as usize];
+                self.pc += 1;
+            }
+            Instruction::Add(x, y) => {
+                let (num, overflow) = self.registers[x as usize].overflowing_add(self.registers[y as usize]);
+                self.registers[x as usize] = num;
+                self.registers[0xF] = overflow as u8;
+                self.pc += 1;
+            }
+            Instruction::Subtract(x, y) => {
+                let (num, overflow) = self.registers[x as usize].overflowing_sub(self.registers[y as usize]);
+                self.registers[x as usize] = num;
+                self.registers[0x0F] = !overflow as u8;
+                self.pc += 1;
+            }
+            Instruction::ShiftRight(x, _y) => {
+                self.registers[0x0F] = self.registers[x as usize] & 0x01;
+                self.registers[x as usize] >>= 1;
+                self.pc += 1;
+            }
+            Instruction::SubtractReverse(x, y) => {
+                let (num, overflow) = self.registers[y as usize].overflowing_sub(self.registers[x as usize]);
+                self.registers[x as usize] = num;
+                self.registers[0x0F] = !overflow as u8;
+                self.pc += 1;
+            }
+            Instruction::ShifLeft(x, _y) => {
+                self.registers[0x0F] = self.registers[x as usize] & 0x80;
+                self.registers[x as usize] <<= 1;
+                self.pc += 1;
+            }
+            Instruction::SkipIfNotEqualsRegister(x, y) => {
+                self.pc += if self.registers[x as usize] != self.registers[y as usize] {2} else {1};
+            }
+            Instruction::LoadIndex(addr) => {
+                self.i = addr;
+                self.pc += 1;
+            }
+            Instruction::JumpWithOffset(addr) => {
+                self.pc = self.registers[0] as u16 + addr;
+            }
             Instruction::RandomWithMask(x, mask) => {unimplemented!()}
             Instruction::Draw(x, y, n) => {unimplemented!()}
             Instruction::SkipIfPressed(x) => {unimplemented!()}
             Instruction::SkipIfNotPressed(x) => {unimplemented!()}
-            Instruction::LoadDelayTimer(x) => {unimplemented!()}
+            Instruction::LoadDelayTimer(x) => {
+                self.registers[x as usize] = self.delay_timer;
+                self.pc += 1;
+            }
             Instruction::WaitKeyPress(x) => {unimplemented!()}
-            Instruction::StoreDelayTimer(x) => {unimplemented!()}
-            Instruction::StoreSoundTimer(x) => {unimplemented!()}
-            Instruction::AddToIndex(x) => {unimplemented!()}
+            Instruction::StoreDelayTimer(x) => {
+                self.delay_timer = self.registers[x as usize];
+                self.pc += 1;
+            }
+            Instruction::StoreSoundTimer(x) => {
+                self.sound_timer = self.registers[x as usize];
+                self.pc += 1;
+            }
+            Instruction::AddToIndex(x) => {
+                self.i += self.registers[x as usize] as u16;
+                self.pc += 1;
+            }
             Instruction::LoadSprite(x) => {unimplemented!()}
             Instruction::StoreBCD(x) => {unimplemented!()}
             Instruction::StoreRegisters(x) => {unimplemented!()}
